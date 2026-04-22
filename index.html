@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Una carta para vos</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --black: #000000;
+    --black-soft: #111111;
+    --black-card: #161616;
+    --black-border: #222222;
+    --gold: #c9a84c;
+    --gold-light: #e8c97a;
+    --gold-dim: #7a6230;
+    --white: #f5f0e8;
+    --white-dim: #b8b0a0;
+    --white-muted: #6a6460;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--black);
+    font-family: 'Poppins', sans-serif;
+    color: var(--white);
+    overflow-x: hidden;
+  }
+
+  /* ── INTRO SCREEN ── */
+  #intro {
+    position: fixed;
+    inset: 0;
+    background: var(--black);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    transition: opacity 0.8s ease, visibility 0.8s ease;
+  }
+  #intro.hide { opacity: 0; visibility: hidden; }
+
+  /* ── ENVELOPE 3D ── */
+  .env-perspective {
+    perspective: 900px;
+  }
+
+  .envelope-wrap {
+    position: relative;
+    width: 300px;
+    height: 210px;
+    cursor: pointer;
+    transform-style: preserve-3d;
+  }
+
+  /* Base rectangle */
+  .env-base {
+    position: absolute;
+    inset: 0;
+    background: #141414;
+    border: 1px solid #2a2a2a;
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  /* Four triangular flaps as clipped divs */
+  .env-flap {
+    position: absolute;
+    inset: 0;
+  }
+  /* Bottom flap */
+  .env-flap-bottom {
+    clip-path: polygon(0% 100%, 100% 100%, 50% 52%);
+    background: #1a1a1a;
+  }
+  /* Left flap */
+  .env-flap-left {
+    clip-path: polygon(0% 0%, 0% 100%, 50% 52%);
+    background: #111111;
+  }
+  /* Right flap */
+  .env-flap-right {
+    clip-path: polygon(100% 0%, 100% 100%, 50% 52%);
+    background: #1c1c1c;
+  }
+
+  /* Top flap — this one animates open */
+  .env-flap-top-wrap {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 55%;
+    transform-origin: top center;
+    transform-style: preserve-3d;
+    transform: rotateX(0deg);
+    transition: transform 0.85s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 3;
+  }
+  .env-flap-top {
+    position: absolute;
+    inset: 0;
+    clip-path: polygon(0% 0%, 100% 0%, 50% 95%);
+    background: #1f1f1f;
+    backface-visibility: hidden;
+  }
+
+  /* Gold seal circle on top flap */
+  .env-seal {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 1.5px solid var(--gold-dim);
+    background: transparent;
+    z-index: 4;
+    transition: opacity 0.3s ease;
+  }
+  .env-seal::before {
+    content: '';
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    border: 1px solid var(--gold-dim);
+    opacity: 0.5;
+  }
+
+  /* Gold vertical line below seal */
+  .env-vline {
+    position: absolute;
+    top: 45px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 1px;
+    height: 72px;
+    background: linear-gradient(to bottom, var(--gold-dim), transparent);
+    z-index: 4;
+    transition: opacity 0.3s ease;
+  }
+
+  /* Hide seal & line when open */
+  .envelope-wrap.open .env-seal,
+  .envelope-wrap.open .env-vline {
+    opacity: 0;
+  }
+
+  .envelope-wrap.open .env-flap-top-wrap {
+    transform: rotateX(-178deg);
+  }
+
+  /* Letter peeking out */
+  .letter-peek {
+    position: absolute;
+    bottom: 8px; left: 50%;
+    transform: translateX(-50%) translateY(0px);
+    width: 230px;
+    height: 70px;
+    background: #1b1b1b;
+    border: 1px solid #2a2a2a;
+    border-radius: 1px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8px;
+    letter-spacing: 3.5px;
+    color: var(--gold-dim);
+    text-transform: uppercase;
+    opacity: 0;
+    z-index: 1;
+    transition: opacity 0.4s ease 0.55s, transform 0.75s cubic-bezier(0.4, 0, 0.2, 1) 0.35s;
+  }
+  .envelope-wrap.open .letter-peek {
+    opacity: 1;
+    transform: translateX(-50%) translateY(-26px);
+  }
+
+  .intro-label {
+    margin-top: 48px;
+    font-size: 11px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--white-muted);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+  }
+
+  .intro-title {
+    margin-top: 12px;
+    font-size: 22px;
+    font-weight: 300;
+    letter-spacing: 1px;
+    color: var(--white-dim);
+    text-align: center;
+    max-width: 280px;
+    line-height: 1.4;
+  }
+  .intro-title em {
+    font-style: italic;
+    color: var(--white);
+    font-weight: 400;
+  }
+
+  .btn-open {
+    margin-top: 40px;
+    padding: 14px 40px;
+    background: transparent;
+    border: 1px solid var(--gold-dim);
+    color: var(--gold-light);
+    font-family: 'Poppins', sans-serif;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-radius: 1px;
+    position: relative;
+    overflow: hidden;
+  }
+  .btn-open::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--gold);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.4s ease;
+    z-index: -1;
+  }
+  .btn-open:hover {
+    color: var(--black);
+    border-color: var(--gold);
+  }
+  .btn-open:hover::before { transform: scaleX(1); }
+
+  .gold-line {
+    width: 60px;
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--gold-dim), transparent);
+    margin: 32px auto 0;
+  }
+
+  /* ── LETTER PAGE ── */
+  #letter-page {
+    min-height: 100vh;
+    padding: 60px 20px 100px;
+    max-width: 680px;
+    margin: 0 auto;
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.9s ease, transform 0.9s ease;
+  }
+  #letter-page.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .letter-header {
+    text-align: center;
+    padding-bottom: 48px;
+    border-bottom: 1px solid var(--black-border);
+    margin-bottom: 56px;
+  }
+
+  .letter-badge {
+    display: inline-block;
+    font-size: 9px;
+    letter-spacing: 5px;
+    text-transform: uppercase;
+    color: var(--gold);
+    border: 1px solid var(--gold-dim);
+    padding: 6px 20px;
+    margin-bottom: 28px;
+  }
+
+  .letter-from {
+    font-size: 12px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--white-muted);
+    margin-bottom: 16px;
+  }
+
+  .letter-to-name {
+    font-size: 38px;
+    font-weight: 300;
+    color: var(--white);
+    line-height: 1.2;
+    margin-bottom: 8px;
+  }
+  .letter-to-name em {
+    font-style: italic;
+    color: var(--gold-light);
+  }
+
+  .letter-date {
+    font-size: 11px;
+    color: var(--white-muted);
+    letter-spacing: 2px;
+    margin-top: 20px;
+  }
+
+  .ornament {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin: 40px 0;
+  }
+  .ornament-line {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--gold-dim));
+  }
+  .ornament-line.rev {
+    background: linear-gradient(to left, transparent, var(--gold-dim));
+  }
+  .ornament-diamond {
+    width: 6px; height: 6px;
+    background: var(--gold-dim);
+    transform: rotate(45deg);
+    flex-shrink: 0;
+  }
+
+  .letter-body {
+    color: var(--white-dim);
+    font-size: 16px;
+    font-weight: 300;
+    line-height: 1.95;
+  }
+
+  .letter-body p {
+    margin-bottom: 28px;
+  }
+
+  .letter-body p.intro {
+    font-size: 18px;
+    font-weight: 400;
+    color: var(--white);
+    font-style: italic;
+    line-height: 1.8;
+    border-left: 2px solid var(--gold-dim);
+    padding-left: 20px;
+  }
+
+  .letter-body strong {
+    color: var(--white);
+    font-weight: 500;
+  }
+
+  .letter-body em {
+   font-family: 'Lora', serif;
+    color: var(--gold-light);
+    font-style: italic;
+  }
+
+  .letter-highlight {
+    margin: 36px 0;
+    padding: 0 0 0 22px;
+    border-left: 2px solid var(--gold-dim);
+    background: transparent;
+  }
+  .letter-highlight p {
+    font-family: 'Lora', serif;
+    font-size: 16px;
+    font-style: italic;
+    color: var(--white-dim);
+    line-height: 1.85;
+    margin: 0;
+  }
+  .letter-highlight cite {
+    display: block;
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--gold-dim);
+    font-style: normal;
+    letter-spacing: 0.5px;
+  }
+
+  .letter-footer {
+    margin-top: 60px;
+    padding-top: 40px;
+    border-top: 1px solid var(--black-border);
+    text-align: right;
+  }
+
+  .letter-closing {
+    font-family: 'Lora', serif;
+    font-size: 15px;
+    font-style: italic;
+    color: var(--white-dim);
+    margin-bottom: 20px;
+  }
+
+  .letter-signature {
+    font-size: 28px;
+    font-weight: 300;
+    color: var(--white);
+    letter-spacing: 1px;
+    font-style: italic;
+    margin-bottom: 8px;
+  }
+
+  .letter-ps {
+    margin-top: 48px;
+    padding: 24px;
+    background: var(--black-card);
+    border: 1px solid var(--black-border);
+    border-radius: 2px;
+    text-align: left;
+  }
+  .letter-ps-label {
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 10px;
+  }
+  .letter-ps p {
+    font-size: 13px;
+    color: var(--white-muted);
+    line-height: 1.8;
+    font-style: italic;
+  }
+
+  .bottom-branding {
+    text-align: center;
+    margin-top: 80px;
+    padding-top: 40px;
+    border-top: 1px solid var(--black-border);
+  }
+  .bottom-branding p {
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--white-muted);
+    opacity: 0.4;
+  }
+
+  /* corner decorations */
+  .corner-tl, .corner-br {
+    position: fixed;
+    width: 40px; height: 40px;
+    opacity: 0.2;
+    pointer-events: none;
+  }
+  .corner-tl { top: 24px; left: 24px; border-top: 1px solid var(--gold); border-left: 1px solid var(--gold); }
+  .corner-br { bottom: 24px; right: 24px; border-bottom: 1px solid var(--gold); border-right: 1px solid var(--gold); }
+
+  @media (max-width: 480px) {
+    .letter-to-name { font-size: 28px; }
+    .letter-body { font-size: 15px; }
+    .envelope-wrap { width: 260px; height: 182px; }
+    .letter-peek { width: 200px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="corner-tl"></div>
+<div class="corner-br"></div>
+
+<!-- INTRO: sobre + botón -->
+<div id="intro">
+  <div class="env-perspective">
+    <div class="envelope-wrap" id="envelope">
+      <!-- Base -->
+      <div class="env-base">
+        <div class="env-flap env-flap-bottom"></div>
+        <div class="env-flap env-flap-left"></div>
+        <div class="env-flap env-flap-right"></div>
+      </div>
+      <!-- Top flap (animates open) -->
+      <div class="env-flap-top-wrap">
+        <div class="env-flap-top"></div>
+      </div>
+      <!-- Seal & vertical line (over base, under top flap initially) -->
+      <div class="env-seal"></div>
+      <div class="env-vline"></div>
+      <!-- Letter peek -->
+      <div class="letter-peek">Lo que quería decirte</div>
+    </div>
+  </div>
+
+  <p class="intro-title">Guardé esto para<br><em>este momento.</em></p>
+  <div class="gold-line"></div>
+  <p class="intro-label">Tocá para abrir</p>
+  <button class="btn-open" id="btnOpen">Abrir carta</button>
+</div>
+
+<!-- CARTA -->
+<div id="letter-page">
+
+  <div class="letter-header">
+    <div class="letter-badge">Una carta para vos</div>
+    <p class="letter-from">De parte de</p>
+    <h1 class="letter-to-name">Para <em>Nombre</em>,</h1>
+    <p class="letter-date">— Fecha especial —</p>
+  </div>
+
+  <div class="letter-body">
+
+    <p class="intro">
+      Hay cosas que uno lleva mucho tiempo pensando, sintiendo, y que nunca sabe exactamente cómo decir. Esta carta es mi forma de hacerlo.
+    </p>
+
+    <div class="ornament">
+      <div class="ornament-line"></div>
+      <div class="ornament-diamond"></div>
+      <div class="ornament-line rev"></div>
+    </div>
+
+    <p>
+      Desde que te conozco, algo cambió en mí. No de golpe, sino de a poco, como cuando empieza a entrar la luz de a poquito por una ventana y de repente te das cuenta de que el cuarto ya no está oscuro. Así fue. Sin aviso, sin que yo lo planeara. Simplemente pasó.
+    </p>
+
+    <p>
+      Me acuerdo de la primera vez que te reí de verdad. No de esas risas educadas, sino de esas que no podés controlar, de las que te duele el estómago. En ese momento supe que algo en vos era <em>diferente</em>. Que con vos era distinto.
+    </p>
+
+    <p>
+      Hay momentos que guardo muy adentro. Momentos que parecen pequeños pero que para mí son <strong>enormes</strong>. Como cuando me mandaste ese mensaje sin razón solo para contarme algo que te había pasado. O cuando me miraste y no hacía falta decir nada, porque las dos sabíamos perfectamente qué estábamos pensando.
+    </p>
+
+    <div class="letter-highlight">
+      <p>"Las personas que realmente importan no son las que están en los momentos grandes. Son las que están en los momentos ordinarios, haciéndolos extraordinarios."</p>
+      <cite>— y vos hacés eso sin darte cuenta</cite>
+    </div>
+
+    <p>
+      Quiero que sepas que admiro muchísimas cosas de vos. Admiro cómo te entregás a todo lo que hacés. Cómo cuidás a las personas que querés sin esperar nada a cambio. Cómo encontrás algo lindo hasta en los días más grises. Eso no es común. Y yo tengo la suerte de verlo de cerca.
+    </p>
+
+    <p>
+      Hubo días en los que yo no estuve bien. Días en los que todo se sentía pesado, difícil, sin forma. Y en más de uno, apareció tu voz, tu presencia, tus palabras, y de alguna manera todo se acomodó un poco. Quizás no lo sabías. Quizás nunca te di las gracias como correspondía. Pero <em>te lo debo</em>, y este es el momento.
+    </p>
+
+    <p>
+      No sé qué nos tiene preparado lo que viene. Nadie lo sabe. Pero sí sé que quiero que estés. Que quiero seguir construyendo con vos, seguir riendo, seguir compartiendo lo cotidiano y lo extraordinario. Quiero que cuando pasen los años y miremos para atrás, podamos decir que nos elegimos, que nos cuidamos, que valió la pena cada momento.
+    </p>
+
+    <div class="ornament">
+      <div class="ornament-line"></div>
+      <div class="ornament-diamond"></div>
+      <div class="ornament-line rev"></div>
+    </div>
+
+    <p>
+      Esta carta no alcanza para todo lo que siento. Las palabras siempre quedan cortas cuando son reales. Pero espero que sirva para que sepas, de una vez y para siempre, que para mí <strong>sos importante</strong>. No de manera ordinaria. De esa manera que cambia cosas.
+    </p>
+
+    <p>
+      Gracias por ser como sos. Gracias por dejarme estar cerca. Gracias por este momento que elegí guardar <em>especialmente para vos.</em>
+    </p>
+
+  </div>
+
+  <div class="letter-footer">
+    <p class="letter-closing">Con todo mi cariño,</p>
+    <p class="letter-signature">Tu nombre</p>
+    <p class="letter-date" style="text-align:right; margin-top:8px;">— Escrito con el corazón</p>
+
+    <div class="letter-ps">
+      <p class="letter-ps-label">P.D.</p>
+      <p>Hay más cosas que quiero que veas. En el otro QR encontrás algo que armé especialmente para vos.</p>
+    </div>
+  </div>
+
+  <div class="bottom-branding">
+    <p> · Hecho con amor · </p>
+  </div>
+
+</div>
+
+<script>
+  const envelope = document.getElementById('envelope');
+  const btnOpen = document.getElementById('btnOpen');
+  const intro = document.getElementById('intro');
+  const letterPage = document.getElementById('letter-page');
+  let opened = false;
+
+  envelope.addEventListener('mouseenter', () => {
+    if (!opened) envelope.classList.add('open');
+  });
+  envelope.addEventListener('mouseleave', () => {
+    if (!opened) envelope.classList.remove('open');
+  });
+
+  function openLetter() {
+    if (opened) return;
+    opened = true;
+    envelope.classList.add('open');
+    setTimeout(() => {
+      intro.classList.add('hide');
+      setTimeout(() => {
+        letterPage.classList.add('visible');
+        document.body.style.overflow = 'auto';
+      }, 200);
+    }, 900);
+  }
+
+  btnOpen.addEventListener('click', openLetter);
+  envelope.addEventListener('click', openLetter);
+
+  document.body.style.overflow = 'hidden';
+</script>
+</body>
+</html>
